@@ -38,7 +38,8 @@ def gaussfit(initguess, data):
     return Pf
 
 def callbackX(value):
-    data=+value[1:1200]
+    size=caget("%(CAM)sROI1:SizeX_RBV"%A)
+    data=+value[1:size-1]
     initial = initguess(data)
     final = gaussfit(initial,data)
     fitdata = gauss_fit(final,np.arange(data.size))
@@ -49,7 +50,8 @@ def callbackX(value):
     caput("%(CAM)sX-Gauss:Data-I"%A, fitdata)
 
 def callbackY(value):
-    data=+value[1:950]
+    size=caget("%(CAM)sROI1:SizeY_RBV"%A)
+    data=+value[1:size-1]
     initial = initguess(data)
     final = gaussfit(initial,data)
     fitdata = gauss_fit(final,np.arange(data.size))
