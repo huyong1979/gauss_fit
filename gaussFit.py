@@ -21,14 +21,17 @@ def e_gauss_fit(p, x, y):
 def initguess(data):
     X=np.arange(data.size)
     max=data.max()
+    dataL=list(data)
+    peak=dataL.index(max)
     mean=sum(X*data)/sum(data)
     sigma=np.sqrt(abs(sum((X-mean)**2*data)/sum(data)))
     offset=data[10]
-    P0=[0]*4
+    P0=[0]*5
     P0[0]=max
     P0[1]=mean
     P0[2]=sigma
     P0[3]=offset
+    P0[4]=peak
     return np.asarray(P0)
 
 def gaussfit(initguess, data):
@@ -47,6 +50,8 @@ def callbackX(value):
     caput("%(CAM)sX-Gauss:Mean-I"%A, final[1])
     caput("%(CAM)sX-Gauss:Sigma-I"%A, abs(final[2]))
     caput("%(CAM)sX-Gauss:Offset-I"%A, final[3])
+    caput("%(CAM)sStats1:PeakX_RBV"%A, initial[4])
+    #print('initialX', initial[4])
     caput("%(CAM)sX-Gauss:Data-I"%A, fitdata)
 
 def callbackY(value):
@@ -59,6 +64,8 @@ def callbackY(value):
     caput("%(CAM)sY-Gauss:Mean-I"%A, final[1])
     caput("%(CAM)sY-Gauss:Sigma-I"%A, abs(final[2]))
     caput("%(CAM)sY-Gauss:Offset-I"%A, final[3])
+    caput("%(CAM)sStats1:PeakY_RBV"%A, initial[4])
+    #print('initialY', initial[4])
     caput("%(CAM)sY-Gauss:Data-I"%A, fitdata)
 
 def main():
