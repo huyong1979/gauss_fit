@@ -25,11 +25,12 @@ def initguess(data):
     #x: axis X; array[0,data.size)
     x=arange(0,data.size,1)
     max=data.max()
+    min=data.min()
     #make the array as list
     datalist=list(data)
     peak=datalist.index(max)
     mean=sum(x*data)/sum(data)
-    sigma=sqrt(abs(sum((x-mean)**2*data)/sum(data)))
+    sigma=sqrt(abs(sum((x-mean)**2*(data-min))/sum(data-min)))
     offset=data[10]
     p=[0]*5
     p[0]=max
@@ -42,7 +43,7 @@ def initguess(data):
 def gaussfit(p0, data):
     bp,_,_,sts,ret = leastsq(residuals, p0, args=(arange(data.size), data), full_output=1)
     if ret not in [1,2,3,4]:
-        print('No solution %d: %s'%(ret,sts))
+        print('No solution %d: %s: %s'%(ret,sts, str(p0)))
     return bp
 
 def callback(value):
@@ -54,6 +55,7 @@ def callback(value):
     #data: array/waveform data; image profile/intensity
     wf = +value[0:size]
     initp = initguess(wf)
+    #print(initp)
     bestp = gaussfit(initp,wf)
     fittedwf = peval(bestp,arange(wf.size))
     #fittederr = sum((fittedwf-wf)**2)
