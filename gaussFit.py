@@ -40,10 +40,10 @@ def initguess(data):
     return asarray(p)
 
 def gaussfit(p0, data):
-    fp,_,_,sts,ret = leastsq(residuals, p0, args=(arange(data.size), data), full_output=1)
+    bp,_,_,sts,ret = leastsq(residuals, p0, args=(arange(data.size), data), full_output=1)
     if ret not in [1,2,3,4]:
         print('No solution %d: %s'%(ret,sts))
-    return fp
+    return bp
 
 def callback(value):
     recname=value.name
@@ -56,13 +56,17 @@ def callback(value):
     initp = initguess(wf)
     bestp = gaussfit(initp,wf)
     fittedwf = peval(bestp,arange(wf.size))
+    #fittederr = sum((fittedwf-wf)**2)
+    fittederr = sum(((fittedwf-wf)/bestp[0])**2)/size
+    #print('%s fitted error: %f'%(dir, fittederr))
     caput("%s%s-Gauss:Max-I"%(cam,dir), bestp[0])
     caput("%s%s-Gauss:Mean-I"%(cam, dir), bestp[1])
     caput("%s%s-Gauss:Sigma-I"%(cam, dir), abs(bestp[2]))
     caput("%s%s-Gauss:Offset-I"%(cam, dir), bestp[3])
+    caput("%s%s-Gauss:FittedErr-I"%(cam, dir), fittederr)
     caput("%sStats1:Peak%s_RBV"%(cam, dir), initp[4])
     #print('initial %s peak index: %d'%(dir,initp[4]))
-    #print('initial/fitted offsets: %d / %d'%(initp[3],bestp[3]))
+    #print('initial/fitted %s offsets: %d / %d'%(dir,initp[3],bestp[3]))
     caput("%s%s-Gauss:Data-I"%(cam,dir), fittedwf)
 
 def main():
