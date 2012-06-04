@@ -31,7 +31,9 @@ def initguess(data):
     peak=datalist.index(max)
     mean=sum(x*data)/sum(data)
     sigma=sqrt(abs(sum((x-mean)**2*(data-min))/sum(data-min)))
-    offset=data[10]
+#    sigma=sqrt(abs(sum((x-mean)**2*(data))/sum(data)))
+#    offset=data[10]
+    offset=min
     p=[0]*5
     p[0]=max
     p[1]=mean
