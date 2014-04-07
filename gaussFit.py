@@ -4,6 +4,7 @@ from pkg_resources import require
 require('cothread')
 
 import sys, os
+import traceback
 #import numpy as np
 #import scipy as sp
 os.environ["EPICS_CA_MAX_ARRAY_BYTES"] = '40000000'
@@ -34,16 +35,17 @@ def initguess(data):
     datalist=list(data)
     peak=datalist.index(maxV)
     mean=sum(x*data)/sum(data)
-    sigma=sqrt(abs(sum((x-mean)**2*(data-minV))/sum(data-minV)))
+    sigma = 1 #suggested by Ray for skinny profile
+    #sigma=sqrt(abs(sum((x-mean)**2*(data-minV))/sum(data-minV)))
 #    sigma=sqrt(abs(sum((x-mean)**2*(data))/sum(data)))
 #    offset=data[10]
     offset=minV
     p=[0]*5
     p[0]=maxV
-    p[1]=mean
+    #p[1]=mean
     p[2]=sigma
     p[3]=offset
-    p[4]=peak
+    p[1]=peak
     return asarray(p)
 
 def gaussfit(p0, data):
@@ -61,6 +63,7 @@ def callback(value):
         try:
             caput('%sSysUpdateRate-I'%(cam), updateRate)
         except:
+            traceback.print_exc()
             print('can not caput SysUpdateRate')
             return
     tsBuffer.pop(0)
@@ -73,6 +76,7 @@ def callback(value):
         size=caget('%sROI1:Size%s_RBV'%(cam,dire))
     except:
         print("can't get size of ROI")
+	traceback.print_exc()
         return
     #data=+value[1:size-1]
     #data: array/waveform data; image profile/intensity
@@ -96,6 +100,7 @@ def callback(value):
         caput("%s%s-Gauss:Data-I"%(cam,dire), fittedwf)
     except:
         print("can't caput the results out")
+	traceback.print_exc()
         return
 
 def main():
