@@ -5,8 +5,6 @@ require('cothread')
 
 import sys, os
 import traceback
-#import numpy as np
-#import scipy as sp
 os.environ["EPICS_CA_MAX_ARRAY_BYTES"] = '40000000'
 from cothread import WaitForQuit
 from cothread.catools import caget, caput, camonitor, FORMAT_TIME
@@ -46,6 +44,7 @@ def initguess(data):
     p[2]=sigma
     p[3]=offset
     p[1]=peak
+    p[4]=peak
     return asarray(p)
 
 def gaussfit(p0, data):
@@ -55,51 +54,44 @@ def gaussfit(p0, data):
     return bp
 
 def callback(value):
-    tsBuffer.append(value.timestamp)
-    #print(tsBuffer)
-    if (tsBuffer[-1] - tsBuffer[-2])>0.02:
-        updateRate = 1.0/(tsBuffer[-1] - tsBuffer[-2])
-        #print("system update rate: %.3f"%updateRate)
-        try:
+    #print(value.name)
+    try: 
+    	tsBuffer.append(value.timestamp)
+        #print(tsBuffer)
+        if (tsBuffer[-1] - tsBuffer[-2])>0.02:
+            updateRate = 1.0/(tsBuffer[-1] - tsBuffer[-2])
+            #print("system update rate: %.3f"%updateRate)
             caput('%sSysUpdateRate-I'%(cam), updateRate)
-        except:
-            traceback.print_exc()
-            print('can not caput SysUpdateRate')
-            return
-    tsBuffer.pop(0)
-    #print(tsBuffer)
+
+        tsBuffer.pop(0)
+        #print(tsBuffer)
     
-    recname=value.name
-    #dire (direction/axis) is X or Y
-    dire=recname[-5]
-    try:
+        recname=value.name
+        #dire (direction/axis) is X or Y
+    	dire=recname[-5]
         size=caget('%sROI1:Size%s_RBV'%(cam,dire))
-    except:
-        print("can't get size of ROI")
-	traceback.print_exc()
-        return
-    #data=+value[1:size-1]
-    #data: array/waveform data; image profile/intensity
-    wf = +value[0:size]
-    initp = initguess(wf)
-    #print(initp)
-    bestp = gaussfit(initp,wf)
-    fittedwf = peval(bestp,arange(wf.size))
-    #fittederr = sum((fittedwf-wf)**2)
-    fittederr = sum(((fittedwf-wf)/bestp[0])**2)/size
-    #print('%s fitted error: %f'%(dire, fittederr))
-    try:
+	start=caget('%sROI1:Min%s_RBV'%(cam,dire))
+        #data=+value[1:size-1]
+        #data: array/waveform data; image profile/intensity
+        wf = +value[0:size]
+        initp = initguess(wf)
+    	#print(initp)
+    	bestp = gaussfit(initp,wf)
+    	fittedwf = peval(bestp,arange(wf.size))
+        #fittederr = sum((fittedwf-wf)**2)
+    	fittederr = sum(((fittedwf-wf)/bestp[0])**2)/size
+    	#print('%s fitted error: %f'%(dire, fittederr))
+
         caput("%s%s-Gauss:Max-I"%(cam,dire), bestp[0])
-        caput("%s%s-Gauss:Mean-I"%(cam, dire), bestp[1])
+        caput("%s%s-Gauss:Mean-I"%(cam, dire), bestp[1]+start)
         caput("%s%s-Gauss:Sigma-I"%(cam, dire), abs(bestp[2]))
         caput("%s%s-Gauss:Offset-I"%(cam, dire), bestp[3])
         caput("%s%s-Gauss:FittedErr-I"%(cam, dire), fittederr)
-        caput("%sStats1:Peak%s_RBV"%(cam, dire), initp[4])
+        caput("%sStats1:Peak%s_RBV"%(cam, dire), initp[4]+start)
         #print('initial %s peak index: %d'%(dire,initp[4]))
         #print('initial/fitted %s offsets: %d / %d'%(dire,initp[3],bestp[3]))
         caput("%s%s-Gauss:Data-I"%(cam,dire), fittedwf)
     except:
-        print("can't caput the results out")
 	traceback.print_exc()
         return
 
