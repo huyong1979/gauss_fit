@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+'''
+1-D gaussian fit on 1-D epics waveform data -- camera image X or Y profile (average): 
+'''
 
 from pkg_resources import require
 require('cothread')
@@ -19,6 +22,16 @@ if len(sys.argv) != 2:
 cam  = sys.argv[1]
 
 def peval(p, x):
+    '''
+define the gaussian equation
+f(x) = A*exp(-(x-x0)^2/(2*sigmax^2)) + A0
+x is the 1-D profile data
+p[0]-p[3]=maxV-offset: amplitude
+p[1]: centroid (x0 or y0)
+p[2]: sigma
+p[3]: offset
+    '''
+
     return ((p[0]-p[3])*exp(-(x-p[1])**2/(2*p[2]**2))+p[3])
 
 def residuals(p, x, y):
@@ -32,7 +45,7 @@ def initguess(data):
     #make the array as list
     datalist=list(data)
     peak=datalist.index(maxV)
-    mean=sum(x*data)/sum(data)
+    mean=sum(x*data)/sum(data)#mean is actually the centroid
     sigma = 1 #suggested by Ray for skinny profile
     #sigma=sqrt(abs(sum((x-mean)**2*(data-minV))/sum(data-minV)))
 #    sigma=sqrt(abs(sum((x-mean)**2*(data))/sum(data)))
@@ -40,11 +53,11 @@ def initguess(data):
     offset=minV
     p=[0]*5
     p[0]=maxV
+    p[1]=peak
     #p[1]=mean
     p[2]=sigma
     p[3]=offset
-    p[1]=peak
-    p[4]=peak
+    p[4]=peak#p[4] is not used by the fitting
     return asarray(p)
 
 def gaussfit(p0, data):
@@ -83,7 +96,7 @@ def callback(value):
     	#print('%s fitted error: %f'%(dire, fittederr))
 
         caput("%s%s-Gauss:Max-I"%(cam,dire), bestp[0])
-        caput("%s%s-Gauss:Mean-I"%(cam, dire), bestp[1]+start)
+        caput("%s%s-Gauss:Mean-I"%(cam, dire), bestp[1]+start)#centroid
         caput("%s%s-Gauss:Sigma-I"%(cam, dire), abs(bestp[2]))
         caput("%s%s-Gauss:Offset-I"%(cam, dire), bestp[3])
         caput("%s%s-Gauss:FittedErr-I"%(cam, dire), fittederr)
