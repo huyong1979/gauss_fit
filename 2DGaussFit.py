@@ -22,19 +22,19 @@ fitResultPVs = ["%sX-Gauss:Mean-I"%(cam),"%sY-Gauss:Mean-I"%(cam),
                 "%sX-Gauss:Sigma-I"%(cam),"%sY-Gauss:Sigma-I"%(cam)]
 print fitResultPVs
 
-def gaussian(height, off, center_x, center_y, width_x, width_y, rota):
+def gaussian(height, center_x, center_y, width_x, width_y, rota):
     """Returns a gaussian function with the given parameters"""
     width_x = float(width_x)
     width_y = float(width_y)
     rota = float(rota)
-    return lambda x,y: (height-off)*exp(-(((center_x * cos(rota) - center_y * sin(rota)-x * cos(rota) + y * sin(rota))/width_x)**2+((center_x * sin(rota) + center_y * cos(rota)-x * sin(rota) - y * cos(rota))/width_y)**2)/2) + off
+    return lambda x,y: height*exp(-(((center_x * cos(rota) - center_y * sin(rota)-x * cos(rota) + y * sin(rota))/width_x)**2+((center_x * sin(rota) + center_y * cos(rota)-x * sin(rota) - y * cos(rota))/width_y)**2)/2)
 
 def moments(data):
-    """Returns (height, offset, centroidX, contrenoidY, sigmaX, sigmaY, rota)
+    """Returns (height, centroidX, contrenoidY, sigmaX, sigmaY, rota)
     the gaussian parameters of a 2D distribution by calculating its
     moments """
     height = data.max()
-    offset = data.min()
+    #offset = data.min()
     (centroidX,centroidY,sigmaX,sigmaY) = caget(fitResultPVs)
 
 #compute initial theta (rotation angle)
@@ -58,11 +58,11 @@ def moments(data):
     rota = rota-rota1*2*pi
     print "fraction of rota: %f"%rota
 
-    return height, offset, centroidX, centroidY, sigmaX, sigmaY,rota
+    return height, centroidX, centroidY, sigmaX, sigmaY,rota
 
 def fitgaussian(data):
     """Returns (height, x, y, width_x, width_y, rota)
-Returns (height, offset, centroidX, contrenoidY, sigmaX, sigmaY, rota)
+Returns (height, centroidX, contrenoidY, sigmaX, sigmaY, rota)
     the gaussian parameters of a 2D distribution found by a fit"""
     initParams = moments(data)
 #    params = [ 4202.,    478,   605,    10,    100,     0.]
@@ -89,11 +89,11 @@ def callback(value):
         print 'fitted params:'
         print fitParams
         print "***\n"
-        caput("%sX-2DGauss:Sigma-I"%(cam), fitParams[4])
-        caput("%sY-2DGauss:Sigma-I"%(cam), fitParams[5])
-        caput("%sX-2DGauss:Center-I"%(cam), fitParams[2])
-        caput("%sX-2DGauss:Center-I"%(cam), fitParams[3])
-        caput("%s2DGauss:Tilt-I"%(cam), fitParams[6])
+        caput("%sX-2DGauss:Center-I"%(cam), fitParams[1])
+        caput("%sY-2DGauss:Center-I"%(cam), fitParams[2])
+        caput("%sX-2DGauss:Sigma-I"%(cam), fitParams[3])
+        caput("%sY-2DGauss:Sigma-I"%(cam), fitParams[4])
+        caput("%s2DGauss:Tilt-I"%(cam), fitParams[5])
 
     except:
 	traceback.print_exc()
