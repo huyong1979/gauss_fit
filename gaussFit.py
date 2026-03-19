@@ -109,7 +109,7 @@ def callback(value):
         if str(dire) == "Y":
             caput("%sVerProfileYAxis-Wf"%(cam), arange(size-1, -1, -1))
     except:
-	    print("%s: %s", %(datetime.now(), traceback.format_exc()))
+        print("%s: %s"%(datetime.now(), traceback.format_exc()))
         return
 
 
