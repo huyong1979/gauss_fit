@@ -6,20 +6,23 @@
 from pkg_resources import require
 require('cothread')
 
-import sys, os
+import sys 
+import os
 import traceback
-os.environ["EPICS_CA_MAX_ARRAY_BYTES"] = '40000000'
 from cothread import WaitForQuit
 from cothread.catools import caget, caput, camonitor, FORMAT_TIME
 from scipy.optimize import leastsq
 from numpy import exp, arange, sqrt, asarray
+from datetime import datetime
 
-tsBuffer = [0]*2
+os.environ["EPICS_CA_MAX_ARRAY_BYTES"] = '40000000'
+tsBuffer = []
 
 if len(sys.argv) != 2:
     print('must use camera prefix such as LTB-BI{VF:1BD1} for argv[1]')
     exit()
 cam  = sys.argv[1]
+
 
 def peval(p, x):
     '''
@@ -34,8 +37,10 @@ p[3]: offset
 
     return ((p[0]-p[3])*exp(-(x-p[1])**2/(2*p[2]**2))+p[3])
 
+
 def residuals(p, x, y):
     return (y - peval(p,x))
+
 
 def initguess(data):
     #x: axis X; array[0,data.size)
@@ -60,24 +65,20 @@ def initguess(data):
     p[4]=peak#p[4] is not used by the fitting
     return asarray(p)
 
+
 def gaussfit(p0, data):
     bp,_,_,sts,ret = leastsq(residuals, p0, args=(arange(data.size), data), full_output=1)
     if ret not in [1,2,3,4]:
-        print('No solution %d: %s: %s'%(ret,sts, str(p0)))
+        print('%s: No solution %d: %s: %s'%(datetime.now(), ret,sts, str(p0)))
     return bp
 
+
 def callback(value):
-    #print(value.name)
     try: 
     	tsBuffer.append(value.timestamp)
-        #print(tsBuffer)
-        if (tsBuffer[-1] - tsBuffer[-2])>0.02:
-            updateRate = 1.0/(tsBuffer[-1] - tsBuffer[-2])
-            #print("system update rate: %.3f"%updateRate)
-            caput('%sSysUpdateRate-I'%(cam), updateRate)
-
-        tsBuffer.pop(0)
-        #print(tsBuffer)
+        if len(tsBuffer) == 2:
+            caput('%sSysUpdateRate-I'%(cam), (1.0/(tsBuffer[-1] - tsBuffer[-2])))
+            tsBuffer.pop(0)
     
         recname=value.name
         #dire (direction/axis) is X or Y
@@ -104,9 +105,13 @@ def callback(value):
         #print('initial %s peak index: %d'%(dire,initp[4]))
         #print('initial/fitted %s offsets: %d / %d'%(dire,initp[3],bestp[3]))
         caput("%s%s-Gauss:Data-I"%(cam,dire), fittedwf)
+        #for CSS Vertical Profile Y Axis
+        if str(dire) == "Y":
+            caput("%sVerProfileYAxis-Wf"%(cam), arange(size-1, -1, -1))
     except:
-	traceback.print_exc()
+	    print("%s: %s", %(datetime.now(), traceback.format_exc()))
         return
+
 
 def main():
     camonitor("%sStats1:ProfileAverageX_RBV"%(cam), callback, format=FORMAT_TIME)
