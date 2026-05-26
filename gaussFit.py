@@ -3,10 +3,7 @@
 1-D gaussian fit on 1-D epics waveform data -- camera image X or Y profile (average): 
 '''
 
-from pkg_resources import require
-require('cothread')
-
-import sys 
+import sys
 import os
 import traceback
 from cothread import WaitForQuit
@@ -16,7 +13,7 @@ from numpy import exp, arange, sqrt, asarray
 from datetime import datetime
 
 os.environ["EPICS_CA_MAX_ARRAY_BYTES"] = '40000000'
-tsBuffer = []
+tsBuffer = {}  # keyed by axis ('X' or 'Y') to avoid cross-axis zero delta
 
 if len(sys.argv) != 2:
     print('must use camera prefix such as LTB-BI{VF:1BD1} for argv[1]')
@@ -74,27 +71,27 @@ def gaussfit(p0, data):
 
 
 def callback(value):
-    try: 
-    	tsBuffer.append(value.timestamp)
-        if len(tsBuffer) == 2:
-            caput('%sSysUpdateRate-I'%(cam), (1.0/(tsBuffer[-1] - tsBuffer[-2])))
-            tsBuffer.pop(0)
-    
+    try:
         recname=value.name
         #dire (direction/axis) is X or Y
-    	dire=recname[-5]
+        dire=recname[-5]
+
+        prev_ts = tsBuffer.get(dire)
+        tsBuffer[dire] = value.timestamp
+        if prev_ts is not None and (value.timestamp - prev_ts) > 0:
+            caput('%sSysUpdateRate-I'%(cam), (1.0/(value.timestamp - prev_ts)))
         size=caget('%sROI1:Size%s_RBV'%(cam,dire))
-	start=caget('%sROI1:Min%s_RBV'%(cam,dire))
+        start=caget('%sROI1:Min%s_RBV'%(cam,dire))
         #data=+value[1:size-1]
         #data: array/waveform data; image profile/intensity
         wf = +value[0:size]
         initp = initguess(wf)
-    	#print(initp)
-    	bestp = gaussfit(initp,wf)
-    	fittedwf = peval(bestp,arange(wf.size))
+        #print(initp)
+        bestp = gaussfit(initp,wf)
+        fittedwf = peval(bestp,arange(wf.size))
         #fittederr = sum((fittedwf-wf)**2)
-    	fittederr = sum(((fittedwf-wf)/bestp[0])**2)/size
-    	#print('%s fitted error: %f'%(dire, fittederr))
+        fittederr = sum(((fittedwf-wf)/bestp[0])**2)/size
+        #print('%s fitted error: %f'%(dire, fittederr))
 
         caput("%s%s-Gauss:Max-I"%(cam,dire), bestp[0])
         caput("%s%s-Gauss:Mean-I"%(cam, dire), bestp[1]+start)#centroid
@@ -120,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
